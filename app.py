@@ -7,8 +7,9 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)  
 
-# Limit uploaded file size to 2MB
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
+
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+
 
 # Load Haar Cascades for face and eye detection
 face_cascade = cv2.CascadeClassifier(
