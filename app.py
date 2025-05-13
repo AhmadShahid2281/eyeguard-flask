@@ -3,13 +3,16 @@ from flask import Flask, request, jsonify
 import cv2
 import numpy as np
 from flask_cors import CORS 
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
-CORS(app)  
+CORS(app)   # Enable Cross-Origin Resource Sharing
 
-
+# Limit uploaded file size to 16 MB (you can adjust this if needed)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
-
 
 # Load Haar Cascades for face and eye detection
 face_cascade = cv2.CascadeClassifier(
@@ -43,6 +46,12 @@ def analyze():
     if len(faces) == 0:
         return jsonify({'error': 'No face detected'}), 400
 
+    logging.info(f"Detected {len(faces)} faces")
+
+    # Initialize variables for analyzing eyes and redness
+    eye_found = False
+    redness_scores = []
+
     # Loop through detected faces
     for (x, y, w, h) in faces:
         roi_gray = gray[y:y+h, x:x+w]
@@ -50,26 +59,30 @@ def analyze():
 
         # Detect eyes within face
         eyes = eye_cascade.detectMultiScale(roi_gray)
-        if len(eyes) == 0:
-            continue  # Try next face if no eyes found
 
         for (ex, ey, ew, eh) in eyes:
+            eye_found = True
             # Extract eye region
             eye_roi = roi_color[ey:ey+eh, ex:ex+ew]
 
             # Analyze redness from red channel
             red_channel = eye_roi[:, :, 2]
-            redness_score = np.mean(red_channel)
+            redness_scores.append(np.mean(red_channel))
 
-            # Threshold for redness score
-            result = "Take rest" if redness_score > 80 else "Continue work"
+    if not eye_found:
+        return jsonify({'error': 'No eyes detected'}), 400
 
-            return jsonify({
-                "result": result,
-                "score": float(redness_score)
-            })
+    # Calculate average redness score
+    avg_redness = np.mean(redness_scores)
+    logging.info(f"Redness score: {avg_redness}")
 
-    return jsonify({'error': 'No eyes detected'}), 400
+    # Determine result based on redness threshold
+    result = "Take rest" if avg_redness > 80 else "Continue work"
+
+    return jsonify({
+        "result": result,
+        "score": float(avg_redness)
+    })
 
 if __name__ == '__main__':
     # Use PORT from environment or default to 5000
