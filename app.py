@@ -2,8 +2,10 @@ import os
 from flask import Flask, request, jsonify
 import cv2
 import numpy as np
+from flask_cors import CORS 
 
 app = Flask(__name__)
+CORS(app)  
 
 # Limit uploaded file size to 2MB
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
