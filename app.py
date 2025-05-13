@@ -2,16 +2,12 @@ import os
 from flask import Flask, request, jsonify
 import cv2
 import numpy as np
-from flask_cors import CORS 
-import logging
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)   # Enable Cross-Origin Resource Sharing
+CORS(app)
 
-# Limit uploaded file size to 16 MB (you can adjust this if needed)
+# Limit uploaded file size to 16 MB
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
 # Load Haar Cascades for face and eye detection
@@ -41,16 +37,11 @@ def analyze():
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Detect faces
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
-
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    
     if len(faces) == 0:
+        print("No faces detected")  # Debugging log
         return jsonify({'error': 'No face detected'}), 400
-
-    logging.info(f"Detected {len(faces)} faces")
-
-    # Initialize variables for analyzing eyes and redness
-    eye_found = False
-    redness_scores = []
 
     # Loop through detected faces
     for (x, y, w, h) in faces:
@@ -59,32 +50,28 @@ def analyze():
 
         # Detect eyes within face
         eyes = eye_cascade.detectMultiScale(roi_gray)
+        if len(eyes) == 0:
+            print(f"Face detected but no eyes found")  # Debugging log
+            continue  # Try next face if no eyes found
 
         for (ex, ey, ew, eh) in eyes:
-            eye_found = True
             # Extract eye region
             eye_roi = roi_color[ey:ey+eh, ex:ex+ew]
 
             # Analyze redness from red channel
             red_channel = eye_roi[:, :, 2]
-            redness_scores.append(np.mean(red_channel))
+            redness_score = np.mean(red_channel)
 
-    if not eye_found:
-        return jsonify({'error': 'No eyes detected'}), 400
+            # Threshold for redness score
+            result = "Take rest" if redness_score > 80 else "Continue work"
 
-    # Calculate average redness score
-    avg_redness = np.mean(redness_scores)
-    logging.info(f"Redness score: {avg_redness}")
+            return jsonify({
+                "result": result,
+                "score": float(redness_score)
+            })
 
-    # Determine result based on redness threshold
-    result = "Take rest" if avg_redness > 80 else "Continue work"
-
-    return jsonify({
-        "result": result,
-        "score": float(avg_redness)
-    })
+    return jsonify({'error': 'No eyes detected'}), 400
 
 if __name__ == '__main__':
-    # Use PORT from environment or default to 5000
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
