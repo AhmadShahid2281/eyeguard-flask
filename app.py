@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 import cv2
 import numpy as np
@@ -47,4 +48,5 @@ def analyze():
     return jsonify({"error": "No eyes detected"}), 400
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # Use the environment variable PORT for deployment, default to 5000 for local development
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
