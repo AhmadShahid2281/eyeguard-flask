@@ -2,8 +2,11 @@ services:
   - type: web
     name: eyeguard-flask
     env: python
+    pythonVersion: 3.10
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn app:app --workers=1 --worker-class=sync --timeout=120"
+    healthCheckPath: /analyze
     envVars:
       - key: FLASK_ENV
         value: production
+
